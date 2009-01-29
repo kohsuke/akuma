@@ -126,7 +126,7 @@ public class JavaVMArguments extends ArrayList<String> {
             if(adjust(psinfo.readInt())!=pid)
                 throw new IOException("psinfo PID mismatch");   // sanity check
 
-            psinfo.seek(188);  // now jump to pr_argc
+            psinfo.seek(0xBC);  // now jump to pr_argc
             int argc = adjust(psinfo.readInt());
             int argp = adjust(psinfo.readInt());
 
@@ -136,7 +136,7 @@ public class JavaVMArguments extends ArrayList<String> {
                 for( int n=0; n<argc; n++ ) {
                     // read a pointer to one entry
                     as.seek(to64(argp+n*4));
-                    int p = as.readInt();
+                    int p = adjust(as.readInt());
 
                     args.add(readLine(as, p, "argv["+ n +"]"));
                 }
