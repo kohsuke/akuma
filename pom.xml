@@ -42,7 +42,7 @@
               </descriptorRefs>
               <archive>
                 <manifest>
-                  <mainClass>test.EchoServer</mainClass>
+                  <mainClass>com.sun.akuma.EchoServer</mainClass>
                 </manifest>
               </archive>
             </configuration>
