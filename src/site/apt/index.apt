@@ -1,0 +1,123 @@
+What is this?
+
+    This is a Java library you can use in your application to support Unix daemonization. By
+    taking advantages of POSIX API, this library lets you fork your process into background
+    with proper daemonization steps.
+
+    It currently has several features, which we'll see in more details.
+
+Daemonization
+
+    One feature of this library lets you fork a copy into background as a real Unix daemon,
+    when started in the foreground. While doing this, you can also tweak JVM parameters or arguments.
+
+    Unlike the implementation based on <<<Runtime.exec>>>, this version correctly starts a new process group,
+    changes the current directory, and closes file descriptors.
+
+* How do I use it?
+
+    Your integrate akuma into your main method like this:
+    
+------------------------------------------------
+public static void main(String[] args) {
+    Daemonizer d = new Daemonizer();
+    if(d.isDaemonized()) {
+        // perform initialization as a daemon
+        // this involves in closing file descriptors, recording PIDs, etc.
+        d.init();
+    } else {
+        // if you are already daemonized, no point in daemonizing yourself again,
+        // so do this only when you aren't daemonizing.
+        if(you decide to launch a copy into background) {
+            d.daemonize(...);
+            System.exit(0);
+        }
+    }
+    // your normal main code follows
+    // this part can be executed in two ways
+    // 1) the user runs your process in the foreground
+    // 2) you decided to daemonize yourself, in which case the newly forked daemon will execute this code,
+    //    while the originally executed foreground Java process exits before it gets here.
+    ...
+}
+------------------------------------------------
+
+
+JVM Re-launch
+
+    Another feature of this library lets you re-launch a JVM with different VM options, without forking a new
+    child process. This allows applications to tweak parameters that can be only changed at the JVM start-up time,
+    such as heap size, diagnostic options, etc.
+
+    This overwrites the current process via POSIX <<<exec>>> call, so you'll retain
+    the same stdin/stdout/stderr, and the same parent process. In comparison, Starting yourself with <<<Runtime.exec>>>
+    will create a child process with different stdin/stdout, and when the parent is killed, the child is left behind
+    without a controlling terminal.
+
+* How do I use it?
+
+------------------------------------------------
+JavaVMArguments args = JavaVMArguments.current();
+// tweak JVM launch options
+Daemon.selfExec(args);
+------------------------------------------------
+
+Multi-process network server
+
+    This library also lets you write a multi-process network server that listens on the same TCP/IP port.
+    By forking multiple processes, you improve the robustness of your server --- a single destroyed process
+    will not interrupt the service as other worker processes will take over the processing.
+
+    This is how Unix daemons have been traditionally written, such as Apache, yet it was impossible to do this
+    in Java because it doesn't provide an API to let file descriptors to be inherited into children.
+
+* How do I use it?
+
+    Your integrate akuma into your main method like this:
+
+-----------------------------------------------
+public class EchoServer extends NetworkServer {
+    public static void main(String[] args) throws Exception {
+        new EchoServer(args).run();
+    }
+
+    public EchoServer(String[] args) {
+        super(args);
+    }
+
+    @Override
+    protected void forkWorkers(JavaVMArguments args) throws Exception {
+        // fork two worker processes
+        forkWorkerThreads(args, 2);
+    }
+
+    @Override
+    protected ServerSocket createServerSocket() throws Exception {
+        // listen on port 12345
+        return new ServerSocket(12345);
+    }
+
+    @Override
+    protected void worker(ServerSocket ss) throws Exception {
+        byte[] buf = new byte[1024];
+        // run a simple echo server
+        while(true) {
+            Socket s = ss.accept();
+
+            ... serve this socket ... 
+        }
+    }
+}
+-----------------------------------------------
+    
+
+Compatibility
+
+    Because of the difficulty in Java and POSIX API to obtain the OS-level arguments of the process,
+    not all POSIX-compliant operating systems are supported.
+
+    The supported platforms are:
+
+    * Linux (all architectures)
+
+    []
