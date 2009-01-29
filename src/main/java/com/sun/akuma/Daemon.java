@@ -121,7 +121,7 @@ public class Daemon {
      * when they don't work correctly.
      */
     protected void closeDescriptors() throws IOException {
-        if(Boolean.getBoolean(Daemon.class.getName()+".keepDescriptors")) {
+        if(!Boolean.getBoolean(Daemon.class.getName()+".keepDescriptors")) {
             System.out.close();
             System.err.close();
             System.in.close();
