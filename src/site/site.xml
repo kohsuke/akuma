@@ -17,7 +17,7 @@
       <item name="Usage" href="index.html"/>
 
       <item name="Mailing lists" href="servlets/ProjectMailingListList"/>
-      <item name="Source code" href="source/browse/trunk/akuma/"/>
+      <item name="Source code" href="source/browse/akuma/trunk/akuma/"/>
       <item name="Issues" href="servlets/ProjectIssues"/>
     </menu>
     ${reports}
