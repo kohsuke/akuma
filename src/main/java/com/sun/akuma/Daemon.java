@@ -5,6 +5,7 @@ import static com.sun.akuma.CLibrary.LIBC;
 
 import java.io.FileWriter;
 import java.io.IOException;
+import java.io.File;
 
 /**
  * Forks a copy of the current process into the background.
@@ -156,6 +157,11 @@ public class Daemon {
      */
     public static String getCurrentExecutable() {
         int pid = LIBC.getpid();
-        return "/proc/" + pid + "/exe";
+        String name = "/proc/" + pid + "/exe";
+        if(new File(name).exists())
+            return name;
+
+        // cross-platform fallback
+        return System.getProperty("java.home")+"/bin/java";
     }
 }
