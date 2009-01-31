@@ -7,6 +7,12 @@
   <version>1.0-SNAPSHOT</version>
   <name>Embeddable daemonization library</name>
 
+  <scm>
+    <connection>scm:svn:https://svn.dev.java.net/svn/akuma/trunk/akuma</connection>
+    <developerConnection>scm:svn:https://svn.dev.java.net/svn/akuma/trunk/akuma</developerConnection>
+    <url>https://akuma.dev.java.net/source/browse/akuma/trunk/akuma/</url>
+  </scm>
+
   <distributionManagement>
     <repository>
       <id>java.net-m2-repository</id>
