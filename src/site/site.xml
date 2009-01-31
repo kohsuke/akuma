@@ -10,6 +10,7 @@
     <menu name="Akuma">
       <item name="Usage" href="index.html"/>
 
+      <item name="Downloads" href="http://maven.dyndns.org/2/com/sun/akuma/akuma/"/>
       <item name="Mailing lists" href="servlets/ProjectMailingListList"/>
       <item name="Source code" href="source/browse/akuma/trunk/akuma/"/>
       <item name="Issues" href="servlets/ProjectIssues"/>
