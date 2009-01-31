@@ -109,7 +109,9 @@ public class EchoServer extends NetworkServer {
     }
 }
 -----------------------------------------------
-    
+
+    {{{https://akuma.dev.java.net/nonav/xref/com/sun/akuma/EchoServer.html}The complete example}}
+    is avalable separately.
 
 Compatibility
 
@@ -118,9 +120,9 @@ Compatibility
 
     The supported platforms are:
 
-    * Linux (all architectures)
+    * Linux (x86,amd64)
 
-    * Solaris (all architectures)
+    * Solaris (x86,amd64,sparc,sparcv9)
 
     * Mac OS X
 
