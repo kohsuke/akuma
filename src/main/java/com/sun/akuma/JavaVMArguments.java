@@ -20,6 +20,22 @@ import static com.sun.akuma.CLibrary.LIBC;
 /**
  * List of arguments for Java VM and application.
  *
+ * TODO: Mac support
+ * See http://developer.apple.com/qa/qa2001/qa1123.html
+ * http://www.osxfaq.com/man/3/kvm_getprocs.ws
+ * http://matburt.net/?p=16 (libkvm is removed from OSX)
+ * where is kinfo_proc? http://lists.apple.com/archives/xcode-users/2008/Mar/msg00781.html
+ *
+ * This code uses sysctl to get the arg/env list:
+ * http://www.psychofx.com/psi/trac/browser/psi/trunk/src/arch/macosx/macosx_process.c
+ * which came from
+ * http://www.opensource.apple.com/darwinsource/10.4.2/top-15/libtop.c
+ * 
+ * sysctl is defined in libc.
+ *
+ * PS source code for Mac:
+ * http://www.opensource.apple.com/darwinsource/10.4.1/adv_cmds-79.1/ps.tproj/
+ * 
  * @author Kohsuke Kawaguchi
  */
 public class JavaVMArguments extends ArrayList<String> {
