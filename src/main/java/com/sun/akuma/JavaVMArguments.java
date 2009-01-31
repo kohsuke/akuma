@@ -347,7 +347,7 @@ public class JavaVMArguments extends ArrayList<String> {
 
     private static final Logger LOGGER = Logger.getLogger(JavaVMArguments.class.getName());
 
-    public static void main(String[] args) {
-        currentMac(); // test
+    public static void main(String[] args) throws IOException {
+        System.out.println(current());
     }
 }
