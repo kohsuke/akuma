@@ -1,16 +1,15 @@
-<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-  xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+<project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
   <groupId>com.sun.akuma</groupId>
   <artifactId>akuma</artifactId>
   <packaging>jar</packaging>
-  <version>1.0-SNAPSHOT</version>
+  <version>1.0</version>
   <name>Embeddable daemonization library</name>
 
   <scm>
-    <connection>scm:svn:https://svn.dev.java.net/svn/akuma/trunk/akuma</connection>
-    <developerConnection>scm:svn:https://svn.dev.java.net/svn/akuma/trunk/akuma</developerConnection>
-    <url>https://akuma.dev.java.net/source/browse/akuma/trunk/akuma/</url>
+    <connection>scm:svn:https://svn.dev.java.net/svn/akuma/tags/akuma-1.0</connection>
+    <developerConnection>scm:svn:https://svn.dev.java.net/svn/akuma/tags/akuma-1.0</developerConnection>
+    <url>https://akuma.dev.java.net/source/browse/akuma/tags/akuma-1.0</url>
   </scm>
 
   <distributionManagement>
