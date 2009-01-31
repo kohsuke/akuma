@@ -1,11 +1,12 @@
 package com.sun.akuma;
 
 import com.sun.jna.StringArray;
+import com.sun.jna.Memory;
+import com.sun.jna.Native;
+import static com.sun.jna.Pointer.NULL;
+import com.sun.jna.ptr.IntByReference;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Iterator;
-import java.util.Arrays;
+import java.util.*;
 import static java.util.logging.Level.FINEST;
 import java.util.logging.Logger;
 import java.io.IOException;
@@ -20,22 +21,6 @@ import static com.sun.akuma.CLibrary.LIBC;
 /**
  * List of arguments for Java VM and application.
  *
- * TODO: Mac support
- * See http://developer.apple.com/qa/qa2001/qa1123.html
- * http://www.osxfaq.com/man/3/kvm_getprocs.ws
- * http://matburt.net/?p=16 (libkvm is removed from OSX)
- * where is kinfo_proc? http://lists.apple.com/archives/xcode-users/2008/Mar/msg00781.html
- *
- * This code uses sysctl to get the arg/env list:
- * http://www.psychofx.com/psi/trac/browser/psi/trunk/src/arch/macosx/macosx_process.c
- * which came from
- * http://www.opensource.apple.com/darwinsource/10.4.2/top-15/libtop.c
- * 
- * sysctl is defined in libc.
- *
- * PS source code for Mac:
- * http://www.opensource.apple.com/darwinsource/10.4.1/adv_cmds-79.1/ps.tproj/
- * 
  * @author Kohsuke Kawaguchi
  */
 public class JavaVMArguments extends ArrayList<String> {
@@ -84,6 +69,8 @@ public class JavaVMArguments extends ArrayList<String> {
             return currentLinux();
         if("SunOS".equals(os))
             return currentSolaris();
+        if("Mac OS X".equals(os))
+            return currentMac();
 
         throw new UnsupportedOperationException("Unsupported Operating System "+os);
     }
@@ -225,7 +212,142 @@ public class JavaVMArguments extends ArrayList<String> {
         }
     }
 
+    /**
+     * Mac support
+     *
+     * See http://developer.apple.com/qa/qa2001/qa1123.html
+     * http://www.osxfaq.com/man/3/kvm_getprocs.ws
+     * http://matburt.net/?p=16 (libkvm is removed from OSX)
+     * where is kinfo_proc? http://lists.apple.com/archives/xcode-users/2008/Mar/msg00781.html
+     *
+     * This code uses sysctl to get the arg/env list:
+     * http://www.psychofx.com/psi/trac/browser/psi/trunk/src/arch/macosx/macosx_process.c
+     * which came from
+     * http://www.opensource.apple.com/darwinsource/10.4.2/top-15/libtop.c
+     *
+     * sysctl is defined in libc.
+     *
+     * PS source code for Mac:
+     * http://www.opensource.apple.com/darwinsource/10.4.1/adv_cmds-79.1/ps.tproj/
+     */
+    private static JavaVMArguments currentMac() {
+        // local constants
+        final int CTL_KERN = 1;
+        final int KERN_ARGMAX = 8;
+        final int KERN_PROCARGS2 = 49;
+        final int sizeOfInt = Native.getNativeSize(int.class);
+        IntByReference _ = new IntByReference();
+
+
+        IntByReference argmaxRef = new IntByReference(0);
+        IntByReference size = new IntByReference(sizeOfInt);
+
+        // for some reason, I was never able to get sysctlbyname work.
+//        if(LIBC.sysctlbyname("kern.argmax", argmaxRef.getPointer(), size, NULL, _)!=0)
+        if(LIBC.sysctl(new int[]{CTL_KERN,KERN_ARGMAX},2, argmaxRef.getPointer(), size, NULL, _)!=0)
+            throw new UnsupportedOperationException("Failed to get kernl.argmax: "+LIBC.strerror(Native.getLastError()));
+
+        int argmax = argmaxRef.getValue();
+        LOGGER.fine("argmax="+argmax);
+
+        class StringArrayMemory extends Memory {
+            private long offset=0;
+
+            StringArrayMemory(long l) {
+                super(l);
+            }
+
+            int readInt() {
+                int r = getInt(offset);
+                offset+=sizeOfInt;
+                return r;
+            }
+
+            byte peek() {
+                return getByte(offset);
+            }
+
+            String readString() {
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                byte ch;
+                while((ch = getByte(offset++))!='\0')
+                    baos.write(ch);
+                return baos.toString();
+            }
+
+            void skip0() {
+                // skip trailing '\0's
+                while(getByte(offset)=='\0')
+                    offset++;
+            }
+        }
+        StringArrayMemory m = new StringArrayMemory(argmax);
+        size.setValue(argmax);
+        if(LIBC.sysctl(new int[]{CTL_KERN,KERN_PROCARGS2,LIBC.getpid()},3, m, size, NULL, _)!=0)
+            throw new UnsupportedOperationException("Failed to obtain ken.procargs2: "+LIBC.strerror(Native.getLastError()));
+
+        
+        /*
+         * Make a sysctl() call to get the raw argument space of the
+         * process.  The layout is documented in start.s, which is part
+         * of the Csu project.  In summary, it looks like:
+         *
+         * /---------------\ 0x00000000
+         * :               :
+         * :               :
+         * |---------------|
+         * | argc          |
+         * |---------------|
+         * | arg[0]        |
+         * |---------------|
+         * :               :
+         * :               :
+         * |---------------|
+         * | arg[argc - 1] |
+         * |---------------|
+         * | 0             |
+         * |---------------|
+         * | env[0]        |
+         * |---------------|
+         * :               :
+         * :               :
+         * |---------------|
+         * | env[n]        |
+         * |---------------|
+         * | 0             |
+         * |---------------| <-- Beginning of data returned by sysctl()
+         * | exec_path     |     is here.
+         * |:::::::::::::::|
+         * |               |
+         * | String area.  |
+         * |               |
+         * |---------------| <-- Top of stack.
+         * :               :
+         * :               :
+         * \---------------/ 0xffffffff
+         */
+
+        JavaVMArguments args = new JavaVMArguments();
+        int nargs = m.readInt();
+        m.readString(); // exec path
+        for( int i=0; i<nargs; i++) {
+            m.skip0();
+            args.add(m.readString());
+        }
+
+        // this is how you can read environment variables
+//        List<String> lst = new ArrayList<String>();
+//        while(m.peek()!=0)
+//            lst.add(m.readString());
+
+        return args;
+    }
+
     private static final boolean IS_LITTLE_ENDIAN = "little".equals(System.getProperty("sun.cpu.endian"));
 
     private static final Logger LOGGER = Logger.getLogger(JavaVMArguments.class.getName());
+
+    public static void main(String[] args) {
+        currentMac(); // test
+    }
 }
