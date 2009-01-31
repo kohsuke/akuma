@@ -1,11 +1,5 @@
 <?xml version="1.0" encoding="ISO-8859-1"?>
 <project name="Embeddable daemonization library">
-  <!--bannerLeft>
-    <name>JAX-WS</name>
-    <src>https://jaxb.dev.java.net/javaxml-duke.gif</src>
-    <href>https://jax-ws.dev.java.net/</href>
-  </bannerLeft-->
-
   <skin>
     <groupId>org.jvnet.maven-javanet-skin</groupId>
     <artifactId>maven-javanet-skin</artifactId>
