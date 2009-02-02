@@ -14,6 +14,7 @@
       <item name="Mailing lists" href="servlets/ProjectMailingListList"/>
       <item name="Source code" href="source/browse/akuma/trunk/akuma/"/>
       <item name="Issues" href="servlets/ProjectIssues"/>
+      <item name="License" href="http://www.opensource.org/licenses/mit-license.php"/>
     </menu>
     ${reports}
   </body>
