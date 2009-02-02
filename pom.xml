@@ -86,4 +86,12 @@
       <url>http://maven.glassfish.org/content/groups/public/</url>
     </repository>
   </repositories>
-  </project>
+
+  <licenses>
+    <license>
+      <name>MIT license</name>
+      <url>http://www.opensource.org/licenses/mit-license.php</url>
+      <distribution>repo</distribution>
+    </license>
+  </licenses>
+</project>
