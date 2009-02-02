@@ -13,6 +13,8 @@ public interface CLibrary extends Library {
     int fork();
     int kill(int pid, int signum);
     int setsid();
+    int setuid(short newuid);
+    int setgid(short newgid);
     int umask(int mask);
     int getpid();
     int getppid();
