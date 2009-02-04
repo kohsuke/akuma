@@ -15,7 +15,7 @@ import java.io.File;
  * Specifically, from your main method:
  * <pre>
  * public static void main(String[] args) {
- *     Daemonizer d = new Daemonizer();
+ *     Daemon d = new Daemon();
  *     if(d.isDaemonized()) {
  *         // perform initialization as a daemon
  *         // this involves in closing file descriptors, recording PIDs, etc.
@@ -44,6 +44,24 @@ import java.io.File;
  * @author Kohsuke Kawaguchi
  */
 public class Daemon {
+    /**
+     * Do all the necessary steps in one go.
+     *
+     * @param daemonize
+     *      Parse the command line arguments and if the application should be
+     *      daemonized, pass in true.
+     */
+    public void all(boolean daemonize) throws Exception {
+        if(isDaemonized())
+            init();
+        else {
+            if(daemonize) {
+                daemonize();
+                System.exit(0);
+            }
+        }
+    }
+
     /**
      * Returns true if the current process is already launched as a daemon
      * via {@link #daemonize()}.
