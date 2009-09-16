@@ -63,20 +63,29 @@ public class JavaVMArguments extends ArrayList<String> {
      * Gets the process argument list of the current process.
      */
     public static JavaVMArguments current() throws IOException {
+        return of(-1);
+    }
 
+    /**
+     * Gets the process argument list of the specified process ID.
+     *
+     * @param pid
+     *      -1 to indicate the current process.
+     */
+    public static JavaVMArguments of(int pid) throws IOException {
         String os = System.getProperty("os.name");
         if("Linux".equals(os))
-            return currentLinux();
+            return ofLinux(pid);
         if("SunOS".equals(os))
-            return currentSolaris();
+            return ofSolaris(pid);
         if("Mac OS X".equals(os))
-            return currentMac();
+            return ofMac(pid);
 
         throw new UnsupportedOperationException("Unsupported Operating System "+os);
     }
 
-    private static JavaVMArguments currentLinux() throws IOException {
-        int pid = LIBC.getpid();
+    private static JavaVMArguments ofLinux(int pid) throws IOException {
+        pid = resolvePID(pid);
 
         String cmdline = readFile(new File("/proc/" + pid + "/cmdline"));
         JavaVMArguments args = new JavaVMArguments(Arrays.asList(cmdline.split("\0")));
@@ -87,8 +96,13 @@ public class JavaVMArguments extends ArrayList<String> {
         return args;
     }
 
-    private static JavaVMArguments currentSolaris() throws IOException {
-        int pid = LIBC.getpid();
+    private static int resolvePID(int pid) {
+        if(pid==-1) pid=LIBC.getpid();
+        return pid;
+    }
+
+    private static JavaVMArguments ofSolaris(int pid) throws IOException {
+        pid = resolvePID(pid);
         RandomAccessFile psinfo = new RandomAccessFile(new File("/proc/"+pid+"/psinfo"),"r");
         try {
             // see http://cvs.opensolaris.org/source/xref/onnv/onnv-gate/usr/src/uts/common/sys/procfs.h
@@ -230,7 +244,7 @@ public class JavaVMArguments extends ArrayList<String> {
      * PS source code for Mac:
      * http://www.opensource.apple.com/darwinsource/10.4.1/adv_cmds-79.1/ps.tproj/
      */
-    private static JavaVMArguments currentMac() {
+    private static JavaVMArguments ofMac(int pid) {
         // local constants
         final int CTL_KERN = 1;
         final int KERN_ARGMAX = 8;
@@ -283,7 +297,7 @@ public class JavaVMArguments extends ArrayList<String> {
         }
         StringArrayMemory m = new StringArrayMemory(argmax);
         size.setValue(argmax);
-        if(LIBC.sysctl(new int[]{CTL_KERN,KERN_PROCARGS2,LIBC.getpid()},3, m, size, NULL, _)!=0)
+        if(LIBC.sysctl(new int[]{CTL_KERN,KERN_PROCARGS2,resolvePID(pid)},3, m, size, NULL, _)!=0)
             throw new UnsupportedOperationException("Failed to obtain ken.procargs2: "+LIBC.strerror(Native.getLastError()));
 
         
@@ -348,6 +362,12 @@ public class JavaVMArguments extends ArrayList<String> {
     private static final Logger LOGGER = Logger.getLogger(JavaVMArguments.class.getName());
 
     public static void main(String[] args) throws IOException {
-        System.out.println(current());
+        if (args.length==0)
+            System.out.println(current());
+        else {
+            for (String arg : args) {
+                System.out.println(of(Integer.valueOf(arg)));
+            }
+        }
     }
 }
