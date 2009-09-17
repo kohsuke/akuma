@@ -9,6 +9,8 @@ import com.sun.jna.ptr.IntByReference;
 import java.util.*;
 import static java.util.logging.Level.FINEST;
 import java.util.logging.Logger;
+import java.util.logging.Level;
+import java.util.logging.ConsoleHandler;
 import java.io.IOException;
 import java.io.FileInputStream;
 import java.io.File;
@@ -17,6 +19,7 @@ import java.io.RandomAccessFile;
 import java.io.DataInputStream;
 
 import static com.sun.akuma.CLibrary.LIBC;
+import com.sun.akuma.CLibrary.FILE;
 
 /**
  * List of arguments for Java VM and application.
@@ -102,6 +105,10 @@ public class JavaVMArguments extends ArrayList<String> {
     }
 
     private static JavaVMArguments ofSolaris(int pid) throws IOException {
+        // /proc shows different contents based on the caller's memory model, so we need to know if we are 32 or 64.
+        // 32 JVMs are the norm, so err on the 32bit side.
+        boolean areWe64 = "64".equals(System.getProperty("sun.arch.data.model"));
+
         pid = resolvePID(pid);
         RandomAccessFile psinfo = new RandomAccessFile(new File("/proc/"+pid+"/psinfo"),"r");
         try {
@@ -146,27 +153,84 @@ public class JavaVMArguments extends ArrayList<String> {
             if(adjust(psinfo.readInt())!=pid)
                 throw new IOException("psinfo PID mismatch");   // sanity check
 
-            psinfo.seek(0xBC);  // now jump to pr_argc
+            /* The following program computes the offset:
+                    #include <stdio.h>
+                    #include <sys/procfs.h>
+                    int main() {
+                      printf("psinfo_t = %d\n", sizeof(psinfo_t));
+                      psinfo_t *x;
+                      x = 0;
+                      printf("%x\n", &(x->pr_argc));
+                    }
+             */
+
+            psinfo.seek(areWe64?0xEC:0xBC);  // now jump to pr_argc
             int argc = adjust(psinfo.readInt());
-            int argp = adjust(psinfo.readInt());
+            long argp = adjust(areWe64?psinfo.readLong():to64(psinfo.readInt()));
+            if(LOGGER.isLoggable(FINEST))
+                LOGGER.finest(String.format("argc=%d,argp=%X",argc,argp));
 
-            RandomAccessFile as = new RandomAccessFile(new File("/proc/"+pid+"/as"),"r");
-            try {
-                JavaVMArguments args = new JavaVMArguments();
-                for( int n=0; n<argc; n++ ) {
-                    // read a pointer to one entry
-                    as.seek(to64(argp+n*4));
-                    int p = adjust(as.readInt());
+            File asFile = new File("/proc/" + pid + "/as");
+            if (areWe64) {
+                // 32bit and 64bit basically does the same thing, but because the stream position
+                // is computed with signed long, doing 64bit seek to a position bigger than Long.MAX_VALUE
+                // requres some real hacking. Hence two different code path.
+                // (RandomAccessFile uses Java long for offset, so it just can't get to anywhere beyond Long.MAX_VALUE)
+                FILE fp = LIBC.fopen(asFile.getPath(),"r");
+                try {
+                    JavaVMArguments args = new JavaVMArguments();
+                    Memory m = new Memory(8);
+                    for( int n=0; n<argc; n++ ) {
+                        // read a pointer to one entry
+                        seek64(fp,argp+n*8);
+                        if(LOGGER.isLoggable(FINEST))
+                            LOGGER.finest(String.format("Seeked to %X",LIBC.ftell(fp)));
 
-                    args.add(readLine(as, p, "argv["+ n +"]"));
+                        m.setLong(0,0); // just to make sure failed read won't result in bogus value
+                        LIBC.fread(m,1,8,fp);
+                        long p = m.getLong(0);
+
+                        args.add(readLine(fp, p, "argv["+ n +"]"));
+                    }
+                    return args;
+                } finally {
+                    LIBC.fclose(fp);
                 }
-                return args;
-            } finally {
-                as.close();
+            } else {
+                RandomAccessFile as = new RandomAccessFile(asFile,"r");
+                try {
+                    JavaVMArguments args = new JavaVMArguments();
+                    for( int n=0; n<argc; n++ ) {
+                        // read a pointer to one entry
+                        as.seek(argp+n*4);
+                        int p = adjust(as.readInt());
+
+                        args.add(readLine(as, p, "argv["+ n +"]"));
+                    }
+                    return args;
+                } finally {
+                    as.close();
+                }
             }
         } finally {
             psinfo.close();
         }
+    }
+
+    /**
+     * Seek to the specified position. This method handles offset bigger than {@link Long#MAX_VALUE} correctly.
+     *
+     * @param upos
+     *      This value is interpreted as unsigned 64bit integer (even though it's typed 'long')
+     */
+    private static void seek64(FILE fp, long upos) {
+        LIBC.fseek(fp,0,0); // start at the beginning
+        while(upos<0) {
+            long chunk = Long.MAX_VALUE;
+            upos -= chunk;
+            LIBC.fseek(fp,chunk,1);
+        }
+        LIBC.fseek(fp,upos,1);
     }
 
     /**
@@ -180,6 +244,20 @@ public class JavaVMArguments extends ArrayList<String> {
             return i;
     }
 
+    private static long adjust(long i) {
+        if(IS_LITTLE_ENDIAN)
+            return (i<<56)
+                    | ((i<<40) & 0x00FF000000000000L)
+                    | ((i<<24) & 0x0000FF0000000000L)
+                    | ((i<< 8) & 0x000000FF00000000L)
+                    | ((i>> 8) & 0x00000000FF000000L)
+                    | ((i>>24) & 0x0000000000FF0000L)
+                    | ((i>>40) & 0x000000000000FF00L)
+                    | (i>>56);
+        else
+            return i;
+    }
+
     /**
      * int to long conversion with zero-padding.
      */
@@ -189,7 +267,7 @@ public class JavaVMArguments extends ArrayList<String> {
 
     private static String readLine(RandomAccessFile as, int p, String prefix) throws IOException {
         if(LOGGER.isLoggable(FINEST))
-            LOGGER.finest("Reading "+prefix+" at "+p);
+            LOGGER.finest(String.format("Reading %s at %X",prefix,p));
 
         as.seek(to64(p));
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
@@ -199,6 +277,30 @@ public class JavaVMArguments extends ArrayList<String> {
                 LOGGER.finest(prefix +" is so far "+buf.toString());
 
             buf.write(ch);
+        }
+        String line = buf.toString();
+        if(LOGGER.isLoggable(FINEST))
+            LOGGER.finest(prefix+" was "+line);
+        return line;
+    }
+
+    private static String readLine(FILE as, long p, String prefix) throws IOException {
+        if(LOGGER.isLoggable(FINEST))
+            LOGGER.finest(String.format("Reading %s at %X",prefix,p));
+
+        seek64(as,p);
+        Memory m = new Memory(1);
+        ByteArrayOutputStream buf = new ByteArrayOutputStream();
+        int i=0;
+        while(true) {
+            if(LIBC.fread(m,1,1,as)==0)   break;
+            byte b = m.getByte(0);
+            if(b==0)    break;
+
+            if((++i)%100==0 && LOGGER.isLoggable(FINEST))
+                LOGGER.finest(prefix +" is so far "+buf.toString());
+
+            buf.write(b);
         }
         String line = buf.toString();
         if(LOGGER.isLoggable(FINEST))
@@ -362,6 +464,15 @@ public class JavaVMArguments extends ArrayList<String> {
     private static final Logger LOGGER = Logger.getLogger(JavaVMArguments.class.getName());
 
     public static void main(String[] args) throws IOException {
+        // dump the process model of the caller
+        System.out.println("sun.arch.data.model="+System.getProperty("sun.arch.data.model"));
+        System.out.println("sun.cpu.endian="+System.getProperty("sun.cpu.endian"));
+        
+        LOGGER.setLevel(Level.ALL);
+        ConsoleHandler handler = new ConsoleHandler();
+        handler.setLevel(Level.ALL);
+        LOGGER.addHandler(handler);
+        
         if (args.length==0)
             System.out.println(current());
         else {

@@ -4,6 +4,7 @@ import com.sun.jna.Library;
 import com.sun.jna.StringArray;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.sun.jna.PointerType;
 import com.sun.jna.ptr.IntByReference;
 
 /**
@@ -33,6 +34,22 @@ public interface CLibrary extends Library {
     int sysctl(int[] mib, int nameLen, Pointer oldp, IntByReference oldlenp, Pointer newp, IntByReference newlen);
 
     int sysctlnametomib(String name, Pointer mibp, IntByReference size);
+
+    public class FILE extends PointerType {
+        public FILE() {
+        }
+
+        public FILE(Pointer pointer) {
+            super(pointer);
+        }
+    }
+
+    // Additional C functions we need on Solaris 64bit to seek to a place above Long.MAX_VALUE
+    FILE fopen(String fileName, String mode);
+    int fseek(FILE file, long offset, int whence);
+    long ftell(FILE file);
+    int fread(Pointer buf, int size, int count, FILE file);
+    int fclose(FILE file);
 
     public static final CLibrary LIBC = (CLibrary) Native.loadLibrary("c",CLibrary.class);
 }
