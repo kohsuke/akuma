@@ -116,9 +116,19 @@ public class Daemon {
 
     /**
      * Prepares the current process to act as a daemon.
+     * The daemon's PID is written to the file <code>/var/run/daemon.pid</code>.
+     */
+    public void init() throws Exception {
+        init("/var/run/daemon.pid");
+    }
+    
+    /**
+     * Prepares the current process to act as a daemon.
+     * @param pidFile the filename to which the daemon's PID is written; 
+     * or, <code>null</code> to skip writing a PID file.
      */
     @SuppressWarnings({"OctalInteger"})
-    public void init() throws Exception {
+    public void init(String pidFile) throws Exception {
         // start a new process session
         LIBC.setsid();
 
@@ -128,7 +138,7 @@ public class Daemon {
         LIBC.umask(0027);
 
         chdirToRoot();
-        writePidFile();
+        if (pidFile != null) writePidFile(pidFile);
     }
 
     /**
@@ -158,11 +168,12 @@ public class Daemon {
     }
 
     /**
-     * Writes out a PID file.
+     * Writes out the PID of the current process to the specified file.
+     * @param pidFile the filename to write the PID to.
      */
-    protected void writePidFile() throws IOException {
+    protected void writePidFile(String pidFile) throws IOException {
         try {
-            FileWriter fw = new FileWriter("/var/run/daemon.pid");
+            FileWriter fw = new FileWriter(pidFile);
             fw.write(String.valueOf(LIBC.getpid()));
             fw.close();
         } catch (IOException e) {
