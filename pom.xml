@@ -3,13 +3,13 @@
   <groupId>com.sun.akuma</groupId>
   <artifactId>akuma</artifactId>
   <packaging>jar</packaging>
-  <version>1.4</version>
+  <version>1.5-SNAPSHOT</version>
   <name>Embeddable daemonization library</name>
 
   <scm>
-    <connection>scm:svn:https://svn.java.net/svn/akuma~svn/tags/akuma-1.4</connection>
-    <developerConnection>scm:svn:https://svn.java.net/svn/akuma~svn/tags/akuma-1.4</developerConnection>
-    <url>http://java.net/projects/akuma/sources/svn/show/tags/akuma-1.4</url>
+    <connection>scm:svn:https://svn.java.net/svn/akuma~svn/trunk/akuma</connection>
+    <developerConnection>scm:svn:https://svn.java.net/svn/akuma~svn/trunk/akuma</developerConnection>
+    <url>http://java.net/projects/akuma/sources/svn/show/trunk/akuma</url>
   </scm>
 
   <distributionManagement>
