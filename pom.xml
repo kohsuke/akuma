@@ -7,9 +7,9 @@
   <name>Embeddable daemonization library</name>
 
   <scm>
-    <connection>scm:svn:https://svn.dev.java.net/svn/akuma/trunk/akuma</connection>
-    <developerConnection>scm:svn:https://svn.dev.java.net/svn/akuma/trunk/akuma</developerConnection>
-    <url>https://akuma.dev.java.net/source/browse/akuma/trunk/akuma/</url>
+    <connection>scm:svn:https://svn.java.net/svn/akuma~svn/trunk/akuma</connection>
+    <developerConnection>scm:svn:https://svn.java.net/svn/akuma~svn/trunk/akuma</developerConnection>
+    <url>http://java.net/projects/akuma/sources/svn/show/trunk/akuma</url>
   </scm>
 
   <distributionManagement>
@@ -17,10 +17,10 @@
       <id>java.net-m2-repository</id>
       <url>java-net:/maven2-repository/trunk/repository/</url>
     </repository>
-    <site>
+    <!--site>
       <id>akuma-www</id>
       <url>java-net:/akuma/trunk/www/</url>      
-    </site>
+    </site-->
   </distributionManagement>
 
 
@@ -59,7 +59,7 @@
       <extension>
         <groupId>org.jvnet.wagon-svn</groupId>
         <artifactId>wagon-svn</artifactId>
-        <version>1.9</version>
+        <version>1.12</version>
       </extension>
     </extensions>
   </build>
