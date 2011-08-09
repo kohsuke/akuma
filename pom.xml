@@ -1,38 +1,30 @@
 <project xmlns="http://maven.apache.org/POM/4.0.0" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
   <modelVersion>4.0.0</modelVersion>
-  <groupId>com.sun.akuma</groupId>
+  <parent>
+    <groupId>org.kohsuke</groupId>
+    <artifactId>pom</artifactId>
+    <version>2</version>
+  </parent>
   <artifactId>akuma</artifactId>
-  <packaging>jar</packaging>
   <version>1.5-SNAPSHOT</version>
   <name>Embeddable daemonization library</name>
 
   <scm>
-    <connection>scm:svn:https://svn.java.net/svn/akuma~svn/trunk/akuma</connection>
-    <developerConnection>scm:svn:https://svn.java.net/svn/akuma~svn/trunk/akuma</developerConnection>
-    <url>http://java.net/projects/akuma/sources/svn/show/trunk/akuma</url>
+    <connection>scm:git:git@github.com/kohsuke/${project.artifactId}.git</connection>
+    <developerConnection>scm:git:ssh://git@github.com/kohsuke/${project.artifactId}.git</developerConnection>
+    <url>http://${project.artifactId}.kohsuke.org/</url>
   </scm>
 
   <distributionManagement>
-    <repository>
-      <id>java.net-m2-repository</id>
-      <url>java-net:/maven2-repository~svn/trunk/repository/</url>
-    </repository>
-    <!--site>
-      <id>akuma-www</id>
-      <url>java-net:/akuma/trunk/www/</url>      
-    </site-->
+    <site>
+      <id>github-pages</id>
+      <url>gitsite:git@github.com/kohsuke/${project.artifactId}.git</url>
+    </site>
   </distributionManagement>
 
 
   <build>
     <plugins>
-      <plugin>
-        <artifactId>maven-compiler-plugin</artifactId>
-        <configuration>
-          <source>1.5</source>
-          <target>1.5</target>
-        </configuration>
-      </plugin>
       <plugin><!-- create uberjar for easy testing -->
         <artifactId>maven-assembly-plugin</artifactId>
         <executions>
@@ -55,13 +47,6 @@
         </executions>
       </plugin>
     </plugins>
-    <extensions>
-      <extension>
-        <groupId>org.jvnet.wagon-svn</groupId>
-        <artifactId>wagon-svn</artifactId>
-        <version>1.12</version>
-      </extension>
-    </extensions>
   </build>
 
   <dependencies>
