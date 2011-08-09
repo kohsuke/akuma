@@ -1,0 +1,201 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+
+
+
+
+
+
+
+
+
+<html>
+  <head>
+    <title>Embeddable daemonization library - </title>
+    <style type="text/css" media="all">
+      @import url("./css/maven-base.css");
+      @import url("./css/maven-theme.css");
+      @import url("./css/site.css");
+    </style>
+    <link rel="stylesheet" href="./css/print.css" type="text/css" media="print" />
+        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+      </head>
+  <body class="composite">
+    <!-- TODO: move this into JavaScript to patch the skin
+      <div class="xright">  </div>
+    -->
+    <div id="leftColumn">
+      <div id="navcolumn">
+             <dl class=navgroup>
+        <dt>Akuma</dt>
+        <dd><ul>
+              
+    <li class="none">
+              <strong>Usage</strong>
+        </li>
+              
+    <li class="none">
+              <a href="http://maven.dyndns.org/2/com/sun/akuma/akuma/">Downloads</a>
+        </li>
+              
+    <li class="none">
+              <a href="servlets/ProjectMailingListList">Mailing lists</a>
+        </li>
+              
+    <li class="none">
+              <a href="source/browse/akuma/trunk/akuma/">Source code</a>
+        </li>
+              
+    <li class="none">
+              <a href="servlets/ProjectIssues">Issues</a>
+        </li>
+              
+    <li class="none">
+              <a href="http://www.opensource.org/licenses/mit-license.php">License</a>
+        </li>
+          </ul></dd>
+    </dl>
+        </div>
+      <script>
+        // replace the java.net project tools with the navigation bar from Maven.
+        // also get rid of "Get Involved" thingie too, while we are at it
+        var pt = document.getElementById("projecttools");
+        var nv = document.getElementById("navcolumn");
+        
+        while(pt.previousSibling!=null)
+          pt.parentNode.removeChild(pt.previousSibling);
+        
+        pt.parentNode.insertBefore(nv,pt);
+        pt.parentNode.removeChild(pt);
+      </script>
+      <script>
+        // kill "description" h3 bar
+        var ld = document.getElementById("longdescription");
+        if(ld!=null) {
+          for( n=ld.firstChild; n!=null; n=n.nextSibling ) {
+            if(n.nodeType==1 && n.innerHTML=="Description" ) {
+              n.parentNode.removeChild(n);
+              break;
+            }
+          }
+        }
+      </script>
+    </div>
+    <div id="bodyColumn">
+      <div id="contentBox">
+        <div class="section"><h2>What is this?</h2>
+<p>This is a Java library you can use in your application to support Unix daemonization. By taking advantages of POSIX API, this library lets you fork your process into background with proper daemonization steps.</p>
+<p>It currently has several features, which we'll see in more details.</p>
+</div>
+<div class="section"><h2>Daemonization</h2>
+<p>One feature of this library lets you fork a copy into background as a real Unix daemon, when started in the foreground. While doing this, you can also tweak JVM parameters or arguments.</p>
+<p>Unlike the implementation based on <tt>Runtime.exec</tt>, this version correctly starts a new process group, changes the current directory, and closes file descriptors.</p>
+<div class="section"><h3>How do I use it?</h3>
+<p>Your integrate akuma into your main method like this:</p>
+<div class="source"><pre>public static void main(String[] args) {
+    Daemonizer d = new Daemonizer();
+    if(d.isDaemonized()) {
+        // perform initialization as a daemon
+        // this involves in closing file descriptors, recording PIDs, etc.
+        d.init();
+    } else {
+        // if you are already daemonized, no point in daemonizing yourself again,
+        // so do this only when you aren't daemonizing.
+        if(you decide to launch a copy into background) {
+            d.daemonize(...);
+            System.exit(0);
+        }
+    }
+    // your normal main code follows
+    // this part can be executed in two ways
+    // 1) the user runs your process in the foreground
+    // 2) you decided to daemonize yourself, in which case the newly forked daemon will execute this code,
+    //    while the originally executed foreground Java process exits before it gets here.
+    ...
+}</pre>
+</div>
+</div>
+</div>
+<div class="section"><h2>JVM Re-launch</h2>
+<p>Another feature of this library lets you re-launch a JVM with different VM options, without forking a new child process. This allows applications to tweak parameters that can be only changed at the JVM start-up time, such as heap size, diagnostic options, etc.</p>
+<p>This overwrites the current process via POSIX <tt>exec</tt> call, so you'll retain the same stdin/stdout/stderr, and the same parent process. In comparison, Starting yourself with <tt>Runtime.exec</tt> will create a child process with different stdin/stdout, and when the parent is killed, the child is left behind without a controlling terminal.</p>
+<div class="section"><h3>How do I use it?</h3>
+<div class="source"><pre>JavaVMArguments args = JavaVMArguments.current();
+// tweak JVM launch options
+Daemon.selfExec(args);</pre>
+</div>
+</div>
+</div>
+<div class="section"><h2>Multi-process network server</h2>
+<p>This library also lets you write a multi-process network server that listens on the same TCP/IP port. By forking multiple processes, you improve the robustness of your server --- a single destroyed process will not interrupt the service as other worker processes will take over the processing.</p>
+<p>This is how Unix daemons have been traditionally written, such as Apache, yet it was impossible to do this in Java because it doesn't provide an API to let file descriptors to be inherited into children.</p>
+<div class="section"><h3>How do I use it?</h3>
+<p>Your integrate akuma into your main method like this:</p>
+<div class="source"><pre>public class EchoServer extends NetworkServer {
+    public static void main(String[] args) throws Exception {
+        new EchoServer(args).run();
+    }
+
+    public EchoServer(String[] args) {
+        super(args);
+    }
+
+    @Override
+    protected void forkWorkers(JavaVMArguments args) throws Exception {
+        // fork two worker processes
+        forkWorkerThreads(args, 2);
+    }
+
+    @Override
+    protected ServerSocket createServerSocket() throws Exception {
+        // listen on port 12345
+        return new ServerSocket(12345);
+    }
+
+    @Override
+    protected void worker(ServerSocket ss) throws Exception {
+        byte[] buf = new byte[1024];
+        // run a simple echo server
+        while(true) {
+            Socket s = ss.accept();
+
+            ... serve this socket ... 
+        }
+    }
+}</pre>
+</div>
+<p><a href="https://akuma.dev.java.net/nonav/xref/com/sun/akuma/EchoServer.html" class="externalLink">The complete example</a> is avalable separately.</p>
+</div>
+</div>
+<div class="section"><h2>Compatibility</h2>
+<p>Because of the difficulty in Java and POSIX API to obtain the OS-level arguments of the process, not all POSIX-compliant operating systems are supported.</p>
+<p>The supported platforms are:</p>
+<ul><li>Linux (x86,amd64)</li>
+<li>Solaris (x86,amd64,sparc,sparcv9)</li>
+<li>Mac OS X</li>
+</ul>
+</div>
+
+      </div>
+    </div>
+    <div class="clear">
+      <hr/>
+    </div>
+    <div id="footer">
+      <div class="xright">&#169;  
+          2011
+    
+          
+  
+
+  
+  
+  &nbsp;| Last Published: 08/09/2011
+  &nbsp;| Version: 1.5
+</div>
+      <div class="clear">
+        <hr/>
+      </div>
+    </div>
+  </body>
+</html>
