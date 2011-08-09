@@ -24,6 +24,8 @@
 package com.sun.akuma;
 
 import com.sun.jna.Library;
+import com.sun.jna.Memory;
+import com.sun.jna.NativeLong;
 import com.sun.jna.StringArray;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
@@ -73,6 +75,16 @@ public interface CLibrary extends Library {
     long ftell(FILE file);
     int fread(Pointer buf, int size, int count, FILE file);
     int fclose(FILE file);
+
+    /**
+     * Read a symlink. The name will be copied into the specified memory, and returns the number of
+     * bytes copied. The string is not null-terminated.
+     *
+     * @return
+     *      if the return value equals size, the caller needs to retry with a bigger buffer.
+     *      If -1, error.
+     */
+    int readlink(String filename, Memory buffer, NativeLong size);
 
     public static final CLibrary LIBC = (CLibrary) Native.loadLibrary("c",CLibrary.class);
 }

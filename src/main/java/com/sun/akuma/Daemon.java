@@ -23,12 +23,17 @@
  */
 package com.sun.akuma;
 
+import com.sun.jna.Memory;
+import com.sun.jna.Native;
+import com.sun.jna.NativeLong;
 import com.sun.jna.StringArray;
 import static com.sun.akuma.CLibrary.LIBC;
 
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 /**
  * Forks a copy of the current process into the background.
@@ -207,10 +212,44 @@ public class Daemon {
     public static String getCurrentExecutable() {
         int pid = LIBC.getpid();
         String name = "/proc/" + pid + "/exe";
-        if(new File(name).exists())
+        File exe = new File(name);
+        if(exe.exists()) {
+            try {
+                String path = resolveSymlink(exe);
+                if (path!=null)     return path;
+            } catch (IOException e) {
+                LOGGER.log(Level.FINE,"Failed to resolve symlink "+exe,e);
+            }
             return name;
+        }
 
         // cross-platform fallback
         return System.getProperty("java.home")+"/bin/java";
     }
+
+    private static String resolveSymlink(File link) throws IOException {
+        String filename = link.getAbsolutePath();
+
+        for (int sz=512; sz < 65536; sz*=2) {
+            Memory m = new Memory(sz);
+            int r = LIBC.readlink(filename,m,new NativeLong(sz));
+            if (r<0) {
+                int err = Native.getLastError();
+                if (err==22/*EINVAL --- but is this really portable?*/)
+                    return null; // this means it's not a symlink
+                throw new IOException("Failed to readlink "+link+" error="+ err+" "+ LIBC.strerror(err));
+            }
+
+            if (r==sz)
+                continue;   // buffer too small
+
+            byte[] buf = new byte[r];
+            m.read(0,buf,0,r);
+            return new String(buf);
+        }
+
+        throw new IOException("Failed to readlink "+link);
+    }
+
+    private static final Logger LOGGER = Logger.getLogger(Daemon.class.getName());
 }
