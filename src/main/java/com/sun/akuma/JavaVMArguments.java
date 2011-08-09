@@ -189,7 +189,7 @@ public class JavaVMArguments extends ArrayList<String> {
 
             psinfo.seek(areWe64?0xEC:0xBC);  // now jump to pr_argc
             int argc = adjust(psinfo.readInt());
-            long argp = adjust(areWe64?psinfo.readLong():to64(psinfo.readInt()));
+            long argp = areWe64?adjust(psinfo.readLong()):to64(adjust(psinfo.readInt()));
             if(LOGGER.isLoggable(FINEST))
                 LOGGER.finest(String.format("argc=%d,argp=%X",argc,argp));
 
