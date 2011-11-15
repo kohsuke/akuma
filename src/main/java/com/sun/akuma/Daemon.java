@@ -251,5 +251,19 @@ public class Daemon {
         throw new IOException("Failed to readlink "+link);
     }
 
+    /**
+     * Flavor of {@link Daemon} that doesn't change the current directory.
+     *
+     * <p>
+     * This turns out to be often more useful as JavaVM can take lot of arguments and system properties
+     * that use paths, and when we CD they won't work.
+     */
+    public static class WithoutChdir extends Daemon {
+        @Override
+        protected void chdirToRoot() {
+            // noop
+        }
+    }
+
     private static final Logger LOGGER = Logger.getLogger(Daemon.class.getName());
 }
