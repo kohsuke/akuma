@@ -6,7 +6,7 @@
     <version>2</version>
   </parent>
   <artifactId>akuma</artifactId>
-  <version>1.7-SNAPSHOT</version>
+  <version>1.7</version>
   <name>Embeddable daemonization library</name>
 
   <scm>
