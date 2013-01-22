@@ -32,6 +32,7 @@ import static com.sun.akuma.CLibrary.LIBC;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.File;
+import java.lang.reflect.Method;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
@@ -111,6 +112,16 @@ public class Daemon {
     public void daemonize(JavaVMArguments args) {
         if(isDaemonized())
             throw new IllegalStateException("Already running as a daemon");
+
+        if (System.getProperty("com.sun.management.jmxremote.port") != null) {
+            try {
+                Method m = Class.forName("sun.management.Agent").getDeclaredMethod("stopRemoteManagementAgent");
+                m.setAccessible(true);
+                m.invoke(null);
+            } catch (Exception x) {
+                LOGGER.log(Level.SEVERE, "could not simulate jcmd $$ ManagementAgent.stop (JENKINS-14529)", x);
+            }
+        }
 
         // let the child process now that it's a daemon
         args.setSystemProperty(Daemon.class.getName(),"daemonized");
