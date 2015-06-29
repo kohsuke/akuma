@@ -106,6 +106,8 @@ public class JavaVMArguments extends ArrayList<String> {
             return ofSolaris(pid);
         if("Mac OS X".equals(os))
             return ofMac(pid);
+        if("FreeBSD".equals(os))
+            return ofFreeBSD(pid);
 
         throw new UnsupportedOperationException("Unsupported Operating System "+os);
     }
@@ -482,6 +484,43 @@ public class JavaVMArguments extends ArrayList<String> {
         return args;
     }
 
+    private static JavaVMArguments ofFreeBSD(int pid) {
+    	// taken from sys/sysctl.h
+    	final int CTL_KERN = 1;
+    	final int KERN_ARGMAX = 8;
+    	final int KERN_PROC = 14;
+    	final int KERN_PROC_ARGS = 7;
+    	
+    	IntByReference _ = new IntByReference();
+    	IntByReference sysctlArgMax = new IntByReference();
+    	IntByReference size = new IntByReference();
+    	
+    	size.setValue(4);
+    	if( LIBC.sysctl(new int[]{CTL_KERN, KERN_ARGMAX}, 2, sysctlArgMax.getPointer(), size, NULL, _) != 0)
+    		throw new UnsupportedOperationException("Failed to sysctl kern.argmax");
+    	
+    	int argmax = sysctlArgMax.getValue();
+    	Memory m = new Memory(argmax);
+        size.setValue(argmax);
+        
+    	if( LIBC.sysctl(new int[]{CTL_KERN,KERN_PROC, KERN_PROC_ARGS, resolvePID(pid)}, 4, m, size, NULL, _) != 0)
+    		throw new UnsupportedOperationException("");
+    	
+    	ByteArrayOutputStream baos = new ByteArrayOutputStream();
+    	ArrayList<String> lArgs = new ArrayList<String>();
+        byte ch;
+        int offset = 0;
+        while(offset < size.getValue()){
+	        while((ch = m.getByte(offset++))!='\0')
+	            baos.write(ch);
+	        lArgs.add(baos.toString());
+	        baos.reset();
+        }
+        
+        return new JavaVMArguments(lArgs);
+	}
+
+    
     private static final boolean IS_LITTLE_ENDIAN = "little".equals(System.getProperty("sun.cpu.endian"));
 
     private static final Logger LOGGER = Logger.getLogger(JavaVMArguments.class.getName());
