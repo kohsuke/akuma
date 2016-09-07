@@ -20,7 +20,7 @@ Daemonization
     
 ------------------------------------------------
 public static void main(String[] args) {
-    Daemonizer d = new Daemonizer();
+    Daemon d = new Daemon();
     if(d.isDaemonized()) {
         // perform initialization as a daemon
         // this involves in closing file descriptors, recording PIDs, etc.
