@@ -50,6 +50,8 @@ public interface CLibrary extends Library {
     int unsetenv(String name);
     void perror(String msg);
     String strerror(int errno);
+    int dup(int fd);
+    int dup2(int newfd, int oldfd);
 
     // this is listed in http://developer.apple.com/DOCUMENTATION/Darwin/Reference/ManPages/man3/sysctlbyname.3.html
     // but not in http://www.gnu.org/software/libc/manual/html_node/System-Parameters.html#index-sysctl-3493
