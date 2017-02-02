@@ -29,9 +29,8 @@ import com.sun.jna.NativeLong;
 import com.sun.jna.StringArray;
 import static com.sun.akuma.CLibrary.LIBC;
 
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.File;
+import java.io.*;
+import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -185,7 +184,20 @@ public class Daemon {
      * when they don't work correctly.
      */
     protected void closeDescriptors() throws IOException {
-        if(!Boolean.getBoolean(Daemon.class.getName()+".keepDescriptors")) {
+        final String cname = Daemon.class.getName();
+        if (Boolean.getBoolean(cname + ".redirectDescriptors")) {
+            // redirect (dup) System.out / System.err to user-specified files, or /dev/null
+            String stdoutPath = System.getProperty(cname + ".stdoutFile", "/dev/null");
+            String stderrPath = System.getProperty(cname + ".stderrFile", "/dev/null");
+            // attempt mkdirs as a nicety to caller
+            new File(stdoutPath).getParentFile().mkdirs();
+            new File(stderrPath).getParentFile().mkdirs();
+            FileOutputStream stdout = new FileOutputStream(stdoutPath);
+            FileOutputStream stderr = stdoutPath.equals(stderrPath) ? stdout : new FileOutputStream(stderrPath);
+            dupFD(stdout.getFD(), 1);
+            dupFD(stderr.getFD(), 2);
+            System.in.close();
+        } else if(!Boolean.getBoolean(cname +".keepDescriptors")) {
             System.out.close();
             System.err.close();
             System.in.close();
@@ -236,6 +248,42 @@ public class Daemon {
 
         // cross-platform fallback
         return System.getProperty("java.home")+"/bin/java";
+    }
+
+
+     // dup2() system call: close oldfd, make oldfd refer to same resource as newfd
+     // public access to be visible to testing
+    public static int dupFD(FileDescriptor newFD, int oldfd) throws IOException {
+        /*
+           We need to get the field 'private int fd' out of java.io.FileDescriptor
+           There are two possible ways without writing JNI
+           1) sun.misc.SharedSecrets
+           2) reflection
+
+           Both are used elsewhere in this codebase (NetworkServer.java), but
+           prefer 2) b/c dubiousness of using sun.* API's, but it might be
+           rejected by a SecurityManager, if installed.
+         */
+        int newfd;
+        if (Boolean.getBoolean(Daemon.class.getName() + ".useSunMiscForDescriptors")) {
+            newfd = sun.misc.SharedSecrets.getJavaIOFileDescriptorAccess().get(newFD);
+        } else {
+            try {
+                Field fdField = FileDescriptor.class.getDeclaredField("fd");
+                fdField.setAccessible(true);
+                newfd = fdField.getInt(newFD);
+            } catch (Exception nsfe) { // NoSuchFieldException || IllegalAccessException
+                throw new RuntimeException("cannot reflect on java.io.FileDescriptor", nsfe);
+            }
+
+        }
+        int ret = LIBC.dup2(newfd, oldfd);
+        if (ret != oldfd) {
+            String msg = String.format("dup2 returned %d expected %d", ret, oldfd);
+            LIBC.perror(msg);
+            throw new IOException(msg);
+        }
+        return ret;
     }
 
     private static String resolveSymlink(File link) throws IOException {
