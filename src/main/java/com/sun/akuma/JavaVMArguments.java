@@ -278,7 +278,7 @@ public class JavaVMArguments extends ArrayList<String> {
                     | ((i>> 8) & 0x00000000FF000000L)
                     | ((i>>24) & 0x0000000000FF0000L)
                     | ((i>>40) & 0x000000000000FF00L)
-                    | (i>>56);
+                    | (i>>>56);
         else
             return i;
     }
